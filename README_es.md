@@ -13,14 +13,15 @@ Port a MiSTer: Shaeon (Carlos Palmero).
 ## Instalación
 
 - Copia el `.rbf` de `releases/` en `/media/fat/_Computer/`.
-- Copia el contenido de la carpeta `sd/` en la raíz de la SD (`/media/fat/`): deja un disco de
-  CP/M 2.2 en `games/IMSAI8080/cpm22.dsk`.
+- Copia el contenido de la carpeta `sd/` en la raíz de la SD (`/media/fat/`): deja en
+  `games/IMSAI8080/` los discos de la Calypso: `cpm22.dsk` (CP/M 2.2), `wordstar.dsk`,
+  `sc2.dsk` (SuperCalc 2) y `zorks.dsk` (Zork I y II).
 - **No hace falta ninguna ROM**: la imagen del panel y el monitor MEMON/80 van dentro del RBF.
   Si quieres cambiarlos, `games/IMSAI8080/boot.rom` (panel, el `IMSAI8080.ROM` de la Calypso) y
   `games/IMSAI8080/boot1.rom` (monitor, el `IMSAI8080.R01`) se cargan solos al arrancar el core.
 
 Los discos son EDSK de 77 pistas, 26 sectores de 128 bytes, 64 entradas de directorio y 2 pistas
-de sistema. En calypso-ports hay algunos más (`imsai8080/extra-binaries`).
+de sistema.
 
 ## Uso
 

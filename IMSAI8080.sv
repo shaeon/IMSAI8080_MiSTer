@@ -530,7 +530,10 @@ module emu
 		(row < TERMINAL_HEIGHT ? rgb_terminal[3:0] : b_panel) :
 		(row < PANEL_HEIGHT ? b_panel : rgb_terminal[3:0]);
 
-	// Un punto por ciclo de 36 MHz (800x600 a 56 Hz): ya es VGA, no pasa por el scandoubler
+	// Un punto por ciclo de 36 MHz (800x600 a 56 Hz): ya es VGA, no pasa por el scandoubler.
+	// Sin correccion de gamma (GAMMA=0): gamma_corr solo avanza en los flancos de subida de
+	// ce_pix, y aqui ce_pix esta siempre a 1, asi que con GAMMA=1 se quedaba todo el video parado
+	// (pantalla negra con OSD; Quartus quitaba vga.sv entero por 'Lost fanout').
 	wire [1:0] ar = status[9:8];
 	wire       vga_de;
 
@@ -555,7 +558,7 @@ module emu
 		.SCALE      ({1'b0, status[10], 1'b0})
 	);
 
-	video_mixer #(.LINE_LENGTH(820), .GAMMA(1)) video_mixer
+	video_mixer #(.LINE_LENGTH(820), .GAMMA(0)) video_mixer
 	(
 		.CLK_VIDEO  (CLK_VIDEO  ),
 		.CE_PIXEL   (CE_PIXEL   ),
