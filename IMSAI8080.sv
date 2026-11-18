@@ -8,9 +8,10 @@
 //
 // Port a MiSTer: Shaeon (Carlos Palmero).
 //
-// Relojes (rtl/pll.v, de un VCO de 900 MHz):
+// Relojes (rtl/pll.v, de un VCO de 720 MHz):
 //   clk_sys  36 MHz   todo el core; tambien es el reloj de pixel del video 800x600 (56 Hz)
 //   clk_2m5  2,5 MHz  el Votrax SC-01A
+//   clk_vid  72 MHz   CLK_VIDEO y el renderizador HD (rtl/hd_video.sv)
 //
 // Memoria: la RAM de 64K y la imagen del panel van en BRAM y salen cargadas en el RBF (no hace
 // falta SDRAM ni ningun fichero). Se pueden cambiar:
@@ -19,8 +20,12 @@
 //   indice 1     OSD "Reload panel"
 //   indice 2     OSD "Reload ROM at F800"
 //
-// Video: el core genera 800x600 (1024x625 en total, 35,2 kHz / 56,25 Hz): el panel arriba (280
-// lineas) y la consola abajo, o al reves con Ctrl+F2. Va directo, sin scandoubler.
+// Video, dos modos (OSD "Video mode"):
+//   800x600  el de la Calypso: 800x600 (1024x625 en total, 35,2 kHz / 56,25 Hz), el panel arriba
+//            (280 lineas) y la consola abajo, o al reves con Ctrl+F2.
+//   HD 1080p rtl/hd_video.sv: 960x1080 a 60 Hz que el escalador dobla en horizontal; panel
+//            redibujado a doble resolucion vertical y consola con caracteres de 10x10 dobles.
+// Fuente de la consola Wang (la original) o VT220 en los dos modos.
 //
 // This program is free software; you can redistribute it and/or modify it under the terms of the
 // GNU General Public License as published by the Free Software Foundation; either version 2 of
@@ -55,10 +60,10 @@ module emu
 //--- config string -------------------------------------------------------------------------------
 //
 //  Los bits 0-6 son los mismos que en la Calypso.
-//  bits usados: 0-10
+//  bits usados: 0-14
 //  0         1         2         3
 //  01234567890123456789012345678901
-//  XXXXXXXXXXX
+//  XXXXXXXXXXXXXXX
 //
 
 	`include "build_id.v"
@@ -73,10 +78,13 @@ module emu
 		"F1,ROM,Reload Panel;",
 		"F2,ROM,Reload ROM at F800;",
 		"-;",
+		"O[11],Video mode,800x600,HD 1080p;",
 		"O[9:8],Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 		"O[10],Scale,Normal,V-Integer;",
 		"-;",
 		"O[2:1],Console color,Cyan,White,Green,Amber;",
+		"O[12],Console font,Wang,VT220;",
+		"O[14:13],Scanlines (HD),No,25%,50%,75%;",
 		"O[6],Flashing cursor,No,Yes;",
 		"O[4],Votrax,Disabled,Enabled;",
 		"O[5],Votrax Input,Console,Port B;",
@@ -89,6 +97,7 @@ module emu
 
 	wire clk_sys;      // 36 MHz (clk36m en la Calypso)
 	wire clk_2m5;      // 2,5 MHz
+	wire clk_vid;      // 72 MHz (CLK_VIDEO y el renderizador HD)
 	wire pll_locked;
 
 	pll pll
@@ -97,6 +106,7 @@ module emu
 		.rst     (1'b0      ),
 		.outclk_0(clk_sys   ),
 		.outclk_1(clk_2m5   ),
+		.outclk_2(clk_vid   ),
 		.locked  (pll_locked)
 	);
 
@@ -322,8 +332,16 @@ module emu
 		.g(g_panel),
 		.b(b_panel),
 
-		.audio(panel_audio)
+		.audio(panel_audio),
+
+		.hd_leds(hd_leds),
+		.hd_switches(hd_switches),
+		.hd_m_switches(hd_m_switches)
 	);
+
+	wire [43:0] hd_leds;
+	wire [15:0] hd_switches;
+	wire  [9:0] hd_m_switches;
 
 	wire pixel_terminal;
 	wire [7:0] porta_serial_data;
@@ -360,8 +378,25 @@ module emu
 		.audio_out(terminal_audio),
 
 		.serial_echo(porta_serial_data),
-		.serial_echo_strobe(porta_serial_strobe)
+		.serial_echo_strobe(porta_serial_strobe),
+
+		.font_vt220(status[12]),
+		.hd_vram_we(hd_vram_we),
+		.hd_vram_addr(hd_vram_addr),
+		.hd_vram_data(hd_vram_data),
+		.hd_cursor_row(hd_cursor_row),
+		.hd_cursor_col(hd_cursor_col),
+		.hd_cursor_on(hd_cursor_on),
+		.hd_cursor_block(hd_cursor_block),
+		.hd_cursor_timer(hd_cursor_timer)
 	);
+
+	wire        hd_vram_we;
+	wire [11:0] hd_vram_addr;
+	wire  [8:0] hd_vram_data;
+	wire  [4:0] hd_cursor_row;
+	wire  [6:0] hd_cursor_col;
+	wire        hd_cursor_on, hd_cursor_block, hd_cursor_timer;
 
 	cpu cpu_board
 	(
@@ -530,14 +565,74 @@ module emu
 		(row < TERMINAL_HEIGHT ? rgb_terminal[3:0] : b_panel) :
 		(row < PANEL_HEIGHT ? b_panel : rgb_terminal[3:0]);
 
-	// Un punto por ciclo de 36 MHz (800x600 a 56 Hz): ya es VGA, no pasa por el scandoubler.
-	// Sin correccion de gamma (GAMMA=0): gamma_corr solo avanza en los flancos de subida de
-	// ce_pix, y aqui ce_pix esta siempre a 1, asi que con GAMMA=1 se quedaba todo el video parado
-	// (pantalla negra con OSD; Quartus quitaba vga.sv entero por 'Lost fanout').
+	// CLK_VIDEO es siempre clk_vid (72 MHz, el doble de clk_sys y del mismo PLL):
+	//  - 800x600: la salida de siempre (un punto por ciclo de 36 MHz), con CE_PIXEL a 36 MHz.
+	//  - HD 1080p: rtl/hd_video.sv, 960x1080 a 60 Hz, un punto por ciclo de 72 MHz. El escalador
+	//    lo dobla en horizontal (16:9).
+	// No pasa por el scandoubler. Sin correccion de gamma (GAMMA=0): gamma_corr solo avanza en los
+	// flancos de subida de ce_pix, y en HD ce_pix esta siempre a 1 (con GAMMA=1 no salia video).
+	wire hd_mode = status[11];
+
+	// Medio ciclo de 72 MHz en el que cambian las senales de 36 MHz -> ce36
+	reg t36 = 1'b0;
+	always @(posedge clk_sys) t36 <= ~t36;
+	reg t36_a = 1'b0, t36_b = 1'b0;
+	always @(posedge clk_vid) begin
+		t36_a <= t36;
+		t36_b <= t36_a;
+	end
+	wire ce36 = t36_a ^ t36_b;
+
+	reg [11:0] sd_rgb;
+	reg  [3:0] sd_sync;
+	always @(posedge clk_vid) if (ce36) begin
+		sd_rgb  <= {R, G, B};
+		sd_sync <= {hsync, vsync, hblank, vblank};
+	end
+
+	wire [7:0] hd_r, hd_g, hd_b;
+	wire hd_hs, hd_vs, hd_hb, hd_vb;
+
+	hd_video hd_video
+	(
+		.clk            (clk_vid          ),
+		.clk_core       (clk_sys          ),
+		.swap           (swapped_panels   ),
+		.font_vt220     (status[12]       ),
+		.scanlines      (status[14:13]    ),
+		.term_color     (status[2:1]      ),
+		.term_active    (terminal_active  ),
+		.flashing_cursor(status[6]        ),
+		.vram_we        (hd_vram_we       ),
+		.vram_addr      (hd_vram_addr     ),
+		.vram_data      (hd_vram_data     ),
+		.cursor_row     (hd_cursor_row    ),
+		.cursor_col     (hd_cursor_col    ),
+		.cursor_on      (hd_cursor_on     ),
+		.cursor_block   (hd_cursor_block  ),
+		.cursor_timer   (hd_cursor_timer  ),
+		.leds           (hd_leds          ),
+		.switches       (hd_switches      ),
+		.m_switches     (hd_m_switches    ),
+		.disk_leds      (disk_leds        ),
+		.R              (hd_r             ),
+		.G              (hd_g             ),
+		.B              (hd_b             ),
+		.HSync          (hd_hs            ),
+		.VSync          (hd_vs            ),
+		.HBlank         (hd_hb            ),
+		.VBlank         (hd_vb            )
+	);
+
+	wire [7:0] mix_r = hd_mode ? hd_r : {sd_rgb[11:8], sd_rgb[11:8]};
+	wire [7:0] mix_g = hd_mode ? hd_g : {sd_rgb[7:4], sd_rgb[7:4]};
+	wire [7:0] mix_b = hd_mode ? hd_b : {sd_rgb[3:0], sd_rgb[3:0]};
+	wire [3:0] mix_sync = hd_mode ? {hd_hs, hd_vs, hd_hb, hd_vb} : sd_sync;
+
 	wire [1:0] ar = status[9:8];
 	wire       vga_de;
 
-	assign CLK_VIDEO = clk_sys;
+	assign CLK_VIDEO = clk_vid;
 	assign VGA_SL    = 2'd0;
 
 	video_freak video_freak
@@ -551,8 +646,8 @@ module emu
 		.VIDEO_ARX  (VIDEO_ARX  ),
 		.VIDEO_ARY  (VIDEO_ARY  ),
 		.VGA_DE_IN  (vga_de     ),
-		.ARX        ((!ar) ? 12'd4 : (ar - 1'd1)),
-		.ARY        ((!ar) ? 12'd3 : 12'd0),
+		.ARX        ((!ar) ? (hd_mode ? 12'd16 : 12'd4) : (ar - 1'd1)),
+		.ARY        ((!ar) ? (hd_mode ? 12'd9 : 12'd3) : 12'd0),
 		.CROP_SIZE  (12'd0      ),
 		.CROP_OFF   (5'd0       ),
 		.SCALE      ({1'b0, status[10], 1'b0})
@@ -562,17 +657,17 @@ module emu
 	(
 		.CLK_VIDEO  (CLK_VIDEO  ),
 		.CE_PIXEL   (CE_PIXEL   ),
-		.ce_pix     (1'b1       ),
+		.ce_pix     (hd_mode | ce36),
 		.scandoubler(1'b0       ),
 		.hq2x       (1'b0       ),
 		.gamma_bus  (gamma_bus  ),
-		.R          ({R, R}     ),
-		.G          ({G, G}     ),
-		.B          ({B, B}     ),
-		.HSync      (hsync      ),
-		.VSync      (vsync      ),
-		.HBlank     (hblank     ),
-		.VBlank     (vblank     ),
+		.R          (mix_r      ),
+		.G          (mix_g      ),
+		.B          (mix_b      ),
+		.HSync      (mix_sync[3]),
+		.VSync      (mix_sync[2]),
+		.HBlank     (mix_sync[1]),
+		.VBlank     (mix_sync[0]),
 		.HDMI_FREEZE(1'b0       ),
 		.freeze_sync(           ),
 		.VGA_R      (VGA_R      ),

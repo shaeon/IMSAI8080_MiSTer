@@ -10,6 +10,10 @@ de disco (controladora VersaFloppy con WD1793), un segundo puerto serie y el sin
 
 Port a MiSTer: Shaeon (Carlos Palmero).
 
+Además de la salida original de 800×600, tiene un **modo HD 1080p** con el panel redibujado a más
+resolución y la consola a píxeles 2×2 exactos, y la consola puede usar una **fuente VT220** con
+líneas de barrido.
+
 ## Instalación
 
 - Copia el `.rbf` de `releases/` en `/media/fat/_Computer/`.
@@ -55,25 +59,55 @@ El ordenador arranca parado (WAIT) y el teclado está en el panel. Una sesión t
 | DSK Protect | Protección contra escritura de los discos |
 | Reload Panel | Carga otra imagen de panel (`.ROM`) |
 | Reload ROM at F800 | Vuelve a cargar el monitor en F800 (por ejemplo después de usar CP/M, que lo pisa) |
+| Video mode | `800x600` (el de la Calypso) o `HD 1080p` (ver más abajo) |
 | Aspect ratio, Scale | Las opciones habituales de MiSTer |
 | Console color | Cian, blanco, verde o ámbar |
+| Console font | `Wang` (la original) o `VT220` |
+| Scanlines (HD) | Oscurece la segunda línea de cada par en la consola del modo HD: no, 25, 50 o 75 % |
 | Flashing cursor | Cursor parpadeante |
 | Votrax / Votrax Input | Activa el Votrax y elige si lee de la consola o del puerto B |
 | Reset | |
 
+## Modo HD 1080p
+
+El modo de la Calypso (800×600) se ve escalado 1,8 veces en una pantalla de 1080 líneas, con líneas
+desiguales. El modo HD saca **960×1080 a 60 Hz** y el escalador de MiSTer lo dobla en horizontal de
+forma exacta, así que todo sale a escala entera:
+
+- **Panel** a 1600×560 en pantalla, **redibujado** con el doble de resolución vertical: LEDs,
+  palancas y LEDs de disco vueltos a dibujar con suavizado y todos los textos escritos de nuevo
+  (`tools/genera_panel_hd.py`, a partir de la imagen de la Calypso).
+- **Consola** de 80×25 a 1600×500, con caracteres de 10×10 en píxeles de 2×2. Con la fuente VT220 y
+  `Scanlines` se parece mucho a un terminal de fósforo.
+- Ctrl+F2 sigue intercambiando panel y consola.
+
+Pensado para HDMI a 1080p (`video_mode=8` en `MiSTer.ini`). Por la salida analógica sale a 65 kHz,
+que muchos monitores no aceptan: para VGA, mejor el modo 800×600.
+
+## Fuente VT220
+
+La fuente `VT220` es Glass TTY VT220 de Viacheslav Slavinsky
+([svofski/glasstty](https://github.com/svofski/glasstty), dominio público), que reproduce los
+caracteres del DEC VT220 con su estiramiento de puntos (`tools/genera_fuentes.py`). Los caracteres
+gráficos del terminal siguen siendo los de la fuente Wang.
+
 ## Qué cambia respecto a la Calypso
 
-La máquina (`rtl/imsai8080`) es una copia sin cambios de la carpeta del core en calypso-ports (ver
+La máquina (`rtl/imsai8080`) es una copia de la carpeta del core en calypso-ports (ver
 [rtl/imsai8080/ORIGEN.md](rtl/imsai8080/ORIGEN.md): git no permite un submódulo de una sola
-carpeta). El Votrax sí es un submódulo. El pegamento de MiSTer está en `IMSAI8080.sv`:
+carpeta), con unos pocos cambios marcados con `MiSTer:` y apuntados allí. El Votrax sí es un
+submódulo. El pegamento de MiSTer está en `IMSAI8080.sv`:
 
-- **Relojes**: un PLL de 50 MHz con VCO de 900 MHz da 36 MHz (todo el core y el píxel) y 2,5 MHz
-  (Votrax). Los 72 MHz de la SDRAM y la PSRAM no hacen falta.
+- **Relojes**: un PLL de 50 MHz con VCO de 720 MHz da 36 MHz (todo el core y el píxel de
+  800×600), 2,5 MHz (Votrax) y 72 MHz (vídeo y modo HD). Los 72 MHz de la SDRAM y la PSRAM de la
+  Calypso no hacen falta.
 - **Memoria**: la RAM de 64K (PSRAM en la Calypso) y la imagen del panel (SDRAM en la Calypso) van
   en BRAM (`rtl/imsai_mem.sv`) y salen inicializadas en el RBF (`tools/genera_init.py`). El core
   no usa la SDRAM de MiSTer.
-- **Vídeo**: 800x600 a 56 Hz (35,2 kHz), directo a la salida VGA y al escalador HDMI, sin
-  scandoubler.
+- **Vídeo**: 800x600 a 56 Hz (35,2 kHz) o el modo HD, directo a la salida VGA y al escalador
+  HDMI, sin scandoubler.
+- **LEDs**: corregidas las zonas que se encienden, que no estaban centradas en los LEDs del dibujo
+  (los cuatro de estado se encendían a medias).
 - **Teclado**: `ps2_key` de `hps_io` convertido a las señales de `user_io` de MiST.
 - **Audio**: la misma mezcla, por la salida de audio de MiSTer en lugar del I2S.
 
@@ -92,6 +126,7 @@ Release con el `.rbf`.
 - Viacheslav Slavinsky y Sorgelig: WD1793. Fred VanEijk y Cyril Venditti: core Altair 8800, del
   que sale parte del código. 1801BM1@gmail.com: el 8080 (vm80a).
 - MEMON/80 de Martin Eberhard.
+- Viacheslav Slavinsky: fuente Glass TTY VT220.
 - El marco de MiSTer (`sys/`, MiSTer-devel, Sorgelig).
 
 ## Licencia

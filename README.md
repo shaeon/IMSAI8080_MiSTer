@@ -10,6 +10,10 @@ synthesizer (Type 'N Talk). It is the Calypso core by Manuel Teira
 
 MiSTer port: Shaeon (Carlos Palmero).
 
+Besides the original 800×600 output it has an **HD 1080p mode** with the panel redrawn at higher
+resolution and the console at exact 2×2 pixels, and the console can use a **VT220 font** with
+scanlines.
+
 ## Installation
 
 - Copy the `.rbf` from `releases/` to `/media/fat/_Computer/`.
@@ -55,25 +59,55 @@ The computer starts stopped (WAIT) with the keyboard on the panel. A typical ses
 | DSK Protect | Write protection for the disks |
 | Reload Panel | Load another panel image (`.ROM`) |
 | Reload ROM at F800 | Reload the monitor at F800 (for example after CP/M has overwritten it) |
+| Video mode | `800x600` (the Calypso one) or `HD 1080p` (see below) |
 | Aspect ratio, Scale | The usual MiSTer options |
 | Console color | Cyan, white, green or amber |
+| Console font | `Wang` (the original) or `VT220` |
+| Scanlines (HD) | Darkens the second line of each pair in the HD console: none, 25, 50 or 75 % |
 | Flashing cursor | Blinking cursor |
 | Votrax / Votrax Input | Enable the Votrax and choose whether it reads from the console or port B |
 | Reset | |
 
+## HD 1080p mode
+
+The Calypso mode (800×600) is scaled 1.8 times on a 1080-line screen, with uneven lines. The HD
+mode outputs **960×1080 at 60 Hz** and the MiSTer scaler doubles it horizontally in an exact way, so
+everything is shown at an integer scale:
+
+- **Panel** at 1600×560 on screen, **redrawn** with twice the vertical resolution: LEDs, switch
+  paddles and disk LEDs redrawn with antialiasing and every label typeset again
+  (`tools/genera_panel_hd.py`, from the Calypso image).
+- **Console** 80×25 at 1600×500, with 10×10 characters in 2×2 pixels. With the VT220 font and
+  `Scanlines` it looks very much like a phosphor terminal.
+- Ctrl+F2 still swaps panel and console.
+
+Meant for HDMI at 1080p (`video_mode=8` in `MiSTer.ini`). On the analog output it runs at 65 kHz,
+which many monitors do not accept: for VGA, use the 800×600 mode.
+
+## VT220 font
+
+The `VT220` font is Glass TTY VT220 by Viacheslav Slavinsky
+([svofski/glasstty](https://github.com/svofski/glasstty), public domain), which reproduces the DEC
+VT220 characters with their dot stretching (`tools/genera_fuentes.py`). The terminal graphics
+characters are still those of the Wang font.
+
 ## What is different from the Calypso
 
-The machine (`rtl/imsai8080`) is an unmodified copy of the core folder in calypso-ports (see
+The machine (`rtl/imsai8080`) is a copy of the core folder in calypso-ports (see
 [rtl/imsai8080/ORIGEN.md](rtl/imsai8080/ORIGEN.md): git cannot make a submodule of a single
-folder). The Votrax is a submodule. The MiSTer glue is in `IMSAI8080.sv`:
+folder), with a few changes marked `MiSTer:` and listed there. The Votrax is a submodule. The
+MiSTer glue is in `IMSAI8080.sv`:
 
-- **Clocks**: one PLL from 50 MHz with a 900 MHz VCO gives 36 MHz (the whole core and the pixel
-  clock) and 2.5 MHz (Votrax). The 72 MHz for SDRAM and PSRAM are not needed.
+- **Clocks**: one PLL from 50 MHz with a 720 MHz VCO gives 36 MHz (the whole core and the 800×600
+  pixel clock), 2.5 MHz (Votrax) and 72 MHz (video and HD mode). The Calypso 72 MHz for SDRAM and
+  PSRAM are not needed.
 - **Memory**: the 64K RAM (PSRAM on the Calypso) and the panel image (SDRAM on the Calypso) are
   in BRAM (`rtl/imsai_mem.sv`), initialised in the RBF (`tools/genera_init.py`). The core does
   not use the MiSTer SDRAM.
-- **Video**: 800x600 at 56 Hz (35.2 kHz), straight to the VGA output and the HDMI scaler, no
-  scandoubler.
+- **Video**: 800x600 at 56 Hz (35.2 kHz) or the HD mode, straight to the VGA output and the HDMI
+  scaler, no scandoubler.
+- **LEDs**: fixed the areas that light up, which were not centred on the LEDs of the artwork (the
+  four status LEDs lit only halfway).
 - **Keyboard**: `ps2_key` from `hps_io` converted to the MiST `user_io` signals.
 - **Audio**: the same mix, through the MiSTer audio output instead of I2S.
 
@@ -92,6 +126,7 @@ Every push builds the core in GitHub Actions (Docker image `raetro/quartus:17.0`
 - Viacheslav Slavinsky and Sorgelig: WD1793. Fred VanEijk and Cyril Venditti: Altair 8800 core,
   where part of the code comes from. 1801BM1@gmail.com: the 8080 (vm80a).
 - MEMON/80 by Martin Eberhard.
+- Viacheslav Slavinsky: Glass TTY VT220 font.
 - The MiSTer framework (`sys/`, MiSTer-devel, Sorgelig).
 
 ## Licence

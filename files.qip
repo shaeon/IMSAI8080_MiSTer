@@ -42,6 +42,8 @@ set_global_assignment -name SYSTEMVERILOG_FILE rtl/imsai8080/votrax/votrax.sv
 
 # Marco MiSTer
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/imsai_mem.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/font_rom_vt220.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/hd_video.sv
 set_global_assignment -name QIP_FILE           rtl/pll.qip
 set_global_assignment -name SDC_FILE           IMSAI8080.sdc
 set_global_assignment -name SYSTEMVERILOG_FILE IMSAI8080.sv

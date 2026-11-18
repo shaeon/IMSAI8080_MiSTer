@@ -51,7 +51,7 @@ endmodule
 
 // Imagen del panel: 800x280 puntos de 4 bits = 112000 bytes, leidos de 4 en 4 (8 puntos) como en
 // la SDRAM de la Calypso: la palabra n son los bytes 4n..4n+3 del fichero, el primero en los bits
-// bajos. Se escribe byte a byte desde ioctl. Cuatro bancos de 32K x 8, uno por byte.
+// bajos. Se escribe byte a byte desde ioctl. Cuatro bancos de 28K x 8 (28000 palabras), uno por byte.
 module imsai_panel_ram
 (
 	input  wire        clk,
@@ -64,10 +64,10 @@ module imsai_panel_ram
 	input  wire  [7:0] wr_data
 );
 
-	reg [7:0] b0[32768];
-	reg [7:0] b1[32768];
-	reg [7:0] b2[32768];
-	reg [7:0] b3[32768];
+	reg [7:0] b0[28672];
+	reg [7:0] b1[28672];
+	reg [7:0] b2[28672];
+	reg [7:0] b3[28672];
 	initial begin
 		$readmemh("rtl/init/panel0.hex", b0);
 		$readmemh("rtl/init/panel1.hex", b1);

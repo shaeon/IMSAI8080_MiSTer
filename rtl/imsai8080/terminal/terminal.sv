@@ -25,7 +25,18 @@ module terminal(
     output [15:0] audio_out,
     
     output [7:0] serial_echo,
-    output serial_echo_strobe
+    output serial_echo_strobe,
+
+    // MiSTer: fuente VT220 y senales para el renderizador HD (rtl/hd_video.sv)
+    input font_vt220,
+    output hd_vram_we,
+    output [11:0] hd_vram_addr,
+    output [8:0] hd_vram_data,
+    output [4:0] hd_cursor_row,
+    output [6:0] hd_cursor_col,
+    output hd_cursor_on,
+    output hd_cursor_block,
+    output hd_cursor_timer
 );
 
 parameter [3:0] CARD_ADDR = 4'd0;  // SIO2 Address 0000
@@ -44,10 +55,21 @@ wire [8:0] char_code;  // bit 8. Graphics mode, bit 7. Reverse mode. bit 6-0. AS
 wire [9:0] video_val;
 reg [9:0] pixels;
 
+// MiSTer: dos fuentes, Wang (la original) y VT220 (rtl/font_rom_vt220.sv)
+wire [9:0] video_val_wang;
+wire [9:0] video_val_vt220;
+assign video_val = font_vt220 ? video_val_vt220 : video_val_wang;
+
 font_rom font(
     .clock(clk),
     .address(char_addr),
-    .q(video_val)
+    .q(video_val_wang)
+);
+
+font_rom_vt220 font_vt(
+    .clock(clk),
+    .address(char_addr),
+    .q(video_val_vt220)
 );
 
 videoram ram(
@@ -186,6 +208,16 @@ reg [8:0] video_q;
 wire [11:0] video_cursor_addr = {cursor_row[4:0], cursor_col[6:0]}; //128 bytes per line
 reg [8:0] video_data;
 reg video_we;
+
+// MiSTer: el renderizador HD tiene una copia de la RAM de video y del estado del cursor
+assign hd_vram_we = video_we;
+assign hd_vram_addr = video_addr;
+assign hd_vram_data = video_data;
+assign hd_cursor_row = cursor_row;
+assign hd_cursor_col = cursor_col;
+assign hd_cursor_on = cursor_on;
+assign hd_cursor_block = cursor_block;
+assign hd_cursor_timer = cursor_timer;
 
 wire cts = ~(clear | xfer | xferr | lf  | update_cursor_pos | cmd_running | has_cmd); 
 wire rts = has_buffered_key;
