@@ -17,12 +17,14 @@ líneas de barrido.
 ## Instalación
 
 - Copia el `.rbf` de `releases/` en `/media/fat/_Computer/`.
-- Copia el contenido de la carpeta `sd/` en la raíz de la SD (`/media/fat/`): deja en
-  `games/IMSAI8080/` los discos de la Calypso: `cpm22.dsk` (CP/M 2.2), `wordstar.dsk`,
-  `sc2.dsk` (SuperCalc 2) y `zorks.dsk` (Zork I y II).
-- **No hace falta ninguna ROM**: la imagen del panel y el monitor MEMON/80 van dentro del RBF.
-  Si quieres cambiarlos, `games/IMSAI8080/boot.rom` (panel, el `IMSAI8080.ROM` de la Calypso) y
-  `games/IMSAI8080/boot1.rom` (monitor, el `IMSAI8080.R01`) se cargan solos al arrancar el core.
+- Copia el contenido de la carpeta `sd/` en la raíz de la SD (`/media/fat/`). Deja en
+  `games/IMSAI8080/`:
+  - `boot.rom` (imagen del panel, el `IMSAI8080.ROM` de la Calypso) y `boot1.rom` (monitor
+    MEMON/80, el `IMSAI8080.R01`), que el core carga solos al arrancar;
+  - los discos de la Calypso: `cpm22.dsk` (CP/M 2.2), `wordstar.dsk`, `sc2.dsk` (SuperCalc 2) y
+    `zorks.dsk` (Zork I y II).
+- Las dos ROM también van dentro del RBF, así que el core arranca aunque falten. Los ficheros
+  sirven para cambiarlas sin recompilar.
 
 Los discos son EDSK de 77 pistas, 26 sectores de 128 bytes, 64 entradas de directorio y 2 pistas
 de sistema.
