@@ -29,9 +29,6 @@ Todos marcados en el código con `MiSTer:`.
     y el estado del cursor.
 - `panel/panel.sv`
   - Salidas `hd_leds`, `hd_switches` y `hd_m_switches` para el renderizador HD.
-  - `led_cols` corregidas: las zonas que se encienden no estaban centradas en los LEDs del dibujo.
-    En los cuatro de la derecha (INTERRUPTS ENABLED, RUN, WAIT, HOLD) cada zona cogía la mitad de
-    su LED y la mitad del siguiente; en los demás, unas columnas del LED de al lado.
 
 Para actualizar: copiar de nuevo las mismas carpetas desde calypso-ports, volver a aplicar estos
 cambios y anotar aquí el commit.

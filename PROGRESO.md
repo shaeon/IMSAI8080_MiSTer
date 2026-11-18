@@ -40,12 +40,17 @@ Para retomar con "sigue". Se va actualizando a medida que se avanza.
 - [x] Integración en IMSAI8080.sv, OSD (O[11] modo, O[12] fuente, O[14:13] barrido)
 - [x] Simulación del modo HD (verilator en /home/claude/sim, stubs): cuadro 960x1080 correcto;
       coincide punto a punto con las reglas de panel.sv
-- [x] Arreglado en panel.sv: zonas de los LEDs descentradas (los 4 de estado se encendian a medias)
+- [x] ~~Arreglado en panel.sv: zonas de los LEDs descentradas~~ No era un fallo: en panel.sv la
+      imagen sale 8 puntos a la derecha de 'col' y las zonas estan en columnas de 'col'. Se ha
+      deshecho el cambio. El fallo estaba en las tablas HD, que no tenian en cuenta ese retraso:
+      LEDs a medias y barras de los interruptores fuera de las palancas (probado en la placa).
+      Ahora genera_hd.py resta los 8 puntos, centra las zonas de los LEDs en los LEDs del dibujo
+      y amplia un punto las de los LEDs de disco; genera_panel_hd.py pasa a 0 los casi negros.
 - [x] Panel HD redibujado (tools/genera_panel_hd.py -> rtl/init/panel_hd.png -> genera_hd.py --png)
 - [x] Compilación y tiempos (primera versión: clk_vid +3,2 ns; 547/553 bloques de RAM, se ha
       reducido el panel SD a 28K por banco)
 - [x] README, ORIGEN.md (cambios en los ficheros de teiram)
-- [x] Compilación final (Quartus 17.0.2): cumple tiempos (clk_vid +2,8 ns, clk_sys +6,5 ns);
+- [x] Compilación final (Quartus 17.0.2, SEED 2): cumple tiempos (clk_vid +3,3 ns, clk_sys +7,6 ns, pll_hdmi +0,19 ns);
       531/553 bloques de RAM, 30 % de ALMs. Commit y entrega.
 
 ## Pendiente / ideas

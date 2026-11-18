@@ -108,8 +108,6 @@ MiSTer glue is in `IMSAI8080.sv`:
   not use the MiSTer SDRAM.
 - **Video**: 800x600 at 56 Hz (35.2 kHz) or the HD mode, straight to the VGA output and the HDMI
   scaler, no scandoubler.
-- **LEDs**: fixed the areas that light up, which were not centred on the LEDs of the artwork (the
-  four status LEDs lit only halfway).
 - **Keyboard**: `ps2_key` from `hps_io` converted to the MiST `user_io` signals.
 - **Audio**: the same mix, through the MiSTer audio output instead of I2S.
 

@@ -70,14 +70,10 @@ reg [3:0] red[16]   = '{4'h0, 4'h0, 4'h1, 4'h4, 4'h3, 4'h6, 4'hb, 4'h2, 4'h4, 4'
 reg [3:0] green[16] = '{4'h0, 4'h0, 4'h1, 4'h0, 4'ha, 4'h0, 4'h0, 4'h2, 4'h5, 4'h7, 4'h8, 4'h9, 4'ha, 4'hb, 4'hc, 4'hf};
 reg [3:0] blue[16]  = '{4'h0, 4'h1, 4'h0, 4'h0, 4'ha, 4'h0, 4'h0, 4'h2, 4'h4, 4'h7, 4'h8, 4'h9, 4'ha, 4'ha, 4'hb, 4'hf};
 
-// MiSTer: columnas centradas en los LEDs del dibujo (centro - 16). Las originales eran
-//   37, 68, 99, 130, 161, 191, 222, 253, 313, 344, 375, 405, 436, 467, 497, 528, 654, 683, 711, 739
-// y en los cuatro de la derecha (INTERRUPTS ENABLED, RUN, WAIT, HOLD) la zona de cada LED cogia
-// la mitad del suyo y la mitad del siguiente; en los demas, un trozo del LED de al lado.
 reg [10:0] led_cols[20] = '{
-    11'd29, 11'd59, 11'd90, 11'd120, 11'd151, 11'd181, 11'd212, 11'd242,
-    11'd303, 11'd333, 11'd364, 11'd394, 11'd425, 11'd455, 11'd486, 11'd516,
-    11'd642, 11'd670, 11'd698, 11'd726};
+    11'd37, 11'd68, 11'd99, 11'd130, 11'd161, 11'd191, 11'd222, 11'd253,
+    11'd313, 11'd344, 11'd375, 11'd405, 11'd436, 11'd467, 11'd497, 11'd528, 
+    11'd654, 11'd683, 11'd711, 11'd739};
 reg [10:0] led_rows[3] = '{11'd35, 11'd86, 11'd137};
 
 reg [4:0] led_index_cols[44] = '{

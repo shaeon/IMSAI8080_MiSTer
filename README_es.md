@@ -108,8 +108,6 @@ submódulo. El pegamento de MiSTer está en `IMSAI8080.sv`:
   no usa la SDRAM de MiSTer.
 - **Vídeo**: 800x600 a 56 Hz (35,2 kHz) o el modo HD, directo a la salida VGA y al escalador
   HDMI, sin scandoubler.
-- **LEDs**: corregidas las zonas que se encienden, que no estaban centradas en los LEDs del dibujo
-  (los cuatro de estado se encendían a medias).
 - **Teclado**: `ps2_key` de `hps_io` convertido a las señales de `user_io` de MiST.
 - **Audio**: la misma mezcla, por la salida de audio de MiSTer en lugar del I2S.
 

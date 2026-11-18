@@ -320,6 +320,10 @@ def base_color(P, c):
     return Counter(P[b][a] for a, b in c['pts']).most_common(1)[0][0]
 
 def cuantiza(r, g, b):
+    # casi negro -> fondo (indice 0): las barras de los interruptores se pintan donde el punto no
+    # es 0, y un resto oscuro alrededor de las palancas las alargaria fuera de ellas
+    if max(r, g, b) < 0x18:
+        return 0
     # grises (texto): solo la escala neutra; el resto, el color de la paleta mas cercano
     if abs(r - g) < 12 and abs(g - b) < 12 and r > 20:
         cand = (0, 7, 9, 10, 11, 12, 15)
