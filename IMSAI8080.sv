@@ -542,18 +542,13 @@ module emu
 
 //--- video ---------------------------------------------------------------------------------------
 
-	wire [11:0] rgb_t_green    = pixel_terminal == 1'b1 ? 12'h0e0 : 12'h111;
-	wire [11:0] rgb_t_white    = pixel_terminal == 1'b1 ? 12'heee : 12'h111;
-	wire [11:0] rgb_t_cyan     = pixel_terminal == 1'b1 ? 12'h7ee : 12'h111;
-	wire [11:0] rgb_t_amber    = pixel_terminal == 1'b1 ? 12'hfb0 : 12'h111;
-	wire [11:0] rgb_t_disabled = pixel_terminal == 1'b1 ? 12'h444 : 12'h111;
-
-	wire [11:0] rgb_terminal = terminal_active ?
-		status[2:1] == 2'b00 ? rgb_t_cyan :
-		status[2:1] == 2'b01 ? rgb_t_white :
-		status[2:1] == 2'b10 ? rgb_t_green :
-		rgb_t_amber :
-		rgb_t_disabled;
+	// Color de la consola (OSD). Con el teclado en el panel sale el mismo color al 40 %, para
+	// que se vea a donde va el teclado (en la Calypso salia gris, 444, y el OSD no se notaba).
+	wire [11:0] t_color = status[2:1] == 2'b00 ? (terminal_active ? 12'h7ee : 12'h366) :
+	                      status[2:1] == 2'b01 ? (terminal_active ? 12'heee : 12'h666) :
+	                      status[2:1] == 2'b10 ? (terminal_active ? 12'h0e0 : 12'h060) :
+	                                             (terminal_active ? 12'hfb0 : 12'h640);
+	wire [11:0] rgb_terminal = pixel_terminal == 1'b1 ? t_color : 12'h111;
 
 	assign R = swapped_panels ?
 		(row < TERMINAL_HEIGHT ? rgb_terminal[11:8] : r_panel) :

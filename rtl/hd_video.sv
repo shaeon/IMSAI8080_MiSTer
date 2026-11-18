@@ -331,9 +331,11 @@ module hd_video
 
 	wire        s4_dot = s4_font[4'd9 - s4_px] ^ s4_rev;
 	wire        s4_on = s4_dot | s4_cur;
-	wire [11:0] s4_fg = ~term_active ? 12'h444 :
-	                    term_color == 2'd0 ? 12'h7ee : term_color == 2'd1 ? 12'heee :
-	                    term_color == 2'd2 ? 12'h0e0 : 12'hfb0;
+	// Color de la consola; con el teclado en el panel, el mismo al 40 % (como en IMSAI8080.sv)
+	wire [11:0] s4_fg = term_color == 2'd0 ? (term_active ? 12'h7ee : 12'h366) :
+	                    term_color == 2'd1 ? (term_active ? 12'heee : 12'h666) :
+	                    term_color == 2'd2 ? (term_active ? 12'h0e0 : 12'h060) :
+	                                         (term_active ? 12'hfb0 : 12'h640);
 	wire [11:0] s4_crgb = s4_on ? s4_fg : 12'h111;
 
 	reg [23:0] s5_rgb;

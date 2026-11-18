@@ -63,7 +63,7 @@ El ordenador arranca parado (WAIT) y el teclado está en el panel. Una sesión t
 | Reload ROM at F800 | Vuelve a cargar el monitor en F800 (por ejemplo después de usar CP/M, que lo pisa) |
 | Video mode | `800x600` (el de la Calypso) o `HD 1080p` (ver más abajo) |
 | Aspect ratio, Scale | Las opciones habituales de MiSTer |
-| Console color | Cian, blanco, verde o ámbar |
+| Console color | Cian, blanco, verde o ámbar. Con el teclado en el panel sale más apagado (40 %) |
 | Console font | `Wang` (la original) o `VT220` |
 | Scanlines (HD) | Oscurece la segunda línea de cada par en la consola del modo HD: no, 25, 50 o 75 % |
 | Flashing cursor | Cursor parpadeante |

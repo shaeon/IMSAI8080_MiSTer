@@ -63,7 +63,7 @@ The computer starts stopped (WAIT) with the keyboard on the panel. A typical ses
 | Reload ROM at F800 | Reload the monitor at F800 (for example after CP/M has overwritten it) |
 | Video mode | `800x600` (the Calypso one) or `HD 1080p` (see below) |
 | Aspect ratio, Scale | The usual MiSTer options |
-| Console color | Cyan, white, green or amber |
+| Console color | Cyan, white, green or amber. Dimmed (40 %) while the keyboard is on the panel |
 | Console font | `Wang` (the original) or `VT220` |
 | Scanlines (HD) | Darkens the second line of each pair in the HD console: none, 25, 50 or 75 % |
 | Flashing cursor | Blinking cursor |
