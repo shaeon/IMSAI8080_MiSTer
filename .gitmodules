@@ -1,0 +1,3 @@
+[submodule "rtl/imsai8080/votrax/votrax-sc01a-vhdl"]
+	path = rtl/imsai8080/votrax/votrax-sc01a-vhdl
+	url = https://github.com/teiram/votrax-sc01a-vhdl

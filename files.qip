@@ -1,0 +1,47 @@
+# IMSAI 8080 para MiSTer
+#
+# rtl/imsai8080: el core de la Calypso (teiram/calypso-ports, carpeta imsai8080/rtl), copiado
+# sin cambios (ver rtl/imsai8080/ORIGEN.md). No se usa su carpeta calypso/ (top, PLL, SDRAM y
+# PSRAM de la Calypso): aqui el marco es sys/ y la memoria va en BRAM (rtl/imsai_mem.sv).
+# El Votrax SC-01A (rtl/imsai8080/votrax/votrax-sc01a-vhdl) es un submodulo, como alli.
+
+# Los .mif de las ROM internas se buscan como ./rom/... desde la carpeta del core
+set_global_assignment -name SEARCH_PATH        rtl/imsai8080
+
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/imsai8080/vga.sv
+
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/imsai8080/cpu/cpu.sv
+set_global_assignment -name VERILOG_FILE       rtl/imsai8080/cpu/vm80a.v
+
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/imsai8080/terminal/terminal.sv
+set_global_assignment -name QIP_FILE           rtl/imsai8080/terminal/font_rom.qip
+set_global_assignment -name QIP_FILE           rtl/imsai8080/terminal/videoram.qip
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/imsai8080/terminal/beeper.sv
+
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/imsai8080/fdc/fdc.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/imsai8080/fdc/wd1793.sv
+
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/imsai8080/panel/panel.sv
+set_global_assignment -name VERILOG_FILE       rtl/imsai8080/panel/debouncer.v
+set_global_assignment -name VERILOG_FILE       rtl/imsai8080/panel/deposit.v
+set_global_assignment -name VERILOG_FILE       rtl/imsai8080/panel/deposit_next.v
+set_global_assignment -name VERILOG_FILE       rtl/imsai8080/panel/examine.v
+set_global_assignment -name VERILOG_FILE       rtl/imsai8080/panel/examine_next.v
+set_global_assignment -name VERILOG_FILE       rtl/imsai8080/panel/reset.v
+set_global_assignment -name VERILOG_FILE       rtl/imsai8080/panel/sense_switch.v
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/imsai8080/panel/clicker.sv
+set_global_assignment -name QIP_FILE           rtl/imsai8080/panel/click_sound_rom.qip
+
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/imsai8080/sio/sio2.sv
+
+set_global_assignment -name VHDL_FILE          rtl/imsai8080/votrax/cpu68.vhd
+set_global_assignment -name QIP_FILE           rtl/imsai8080/votrax/votrax-sc01a.qip
+set_global_assignment -name QIP_FILE           rtl/imsai8080/votrax/ram.qip
+set_global_assignment -name QIP_FILE           rtl/imsai8080/votrax/rom.qip
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/imsai8080/votrax/votrax.sv
+
+# Marco MiSTer
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/imsai_mem.sv
+set_global_assignment -name QIP_FILE           rtl/pll.qip
+set_global_assignment -name SDC_FILE           IMSAI8080.sdc
+set_global_assignment -name SYSTEMVERILOG_FILE IMSAI8080.sv
