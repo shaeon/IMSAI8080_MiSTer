@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-# Redibuja el panel del IMSAI a doble resolucion vertical para el modo HD.
+# Redibuja el panel del IMSAI al doble de resolucion (1600x560) para el modo HD.
 #
 # Entrada: la imagen del panel de la Calypso (IMSAI8080.ROM, 800x280 a 4 bits).
-# Salida:  una imagen 800x560 en modo P con la misma paleta de 16 colores (para genera_hd.py --png)
-#          y, si se pide, una vista previa a 1600x560 (como se ve en pantalla en el modo HD).
+# Salida:  una imagen 1600x560 en modo P con la misma paleta de 16 colores (para genera_hd.py
+#          --png) y, si se pide, la misma en RGB antes de pasarla a la paleta.
 #
-# Se trabaja a 1600x560 (pixeles cuadrados de pantalla) y al final se reduce a 800x560 (el modo HD
-# saca cada punto del core como 2x1 pixeles):
 #   - Lo que son rectangulos alineados (lineas, marcos, corchetes) se escala sin mas.
 #   - Los LEDs, las palancas de los interruptores y los LEDs de disco se vuelven a dibujar con
 #     suavizado en las mismas posiciones.
@@ -302,17 +300,18 @@ def main():
     if len(sys.argv) > 3:
         lienzo.save(sys.argv[3])
 
-    # --- 1600x560 -> 800x560 y paleta ---------------------------------------------------------
-    red = lienzo.resize((800, 560), Image.BOX)
-    pr = red.load()
-    out = Image.new('P', (800, 560))
+    # --- paleta -------------------------------------------------------------------------------
+    pr = lienzo.load()
+    out = Image.new('P', (1600, 560))
     out.putpalette([v for c in RGB for v in c] + [0] * (768 - 48))
     po = out.load()
+    cache = {}
     for y in range(560):
-        for x in range(800):
-            r, g, b = pr[x, y]
-            po[x, y] = cuantiza(r, g, b)
-    # los LEDs deben ser exactamente indice 3 por dentro (es lo que se enciende)
+        for x in range(1600):
+            c = pr[x, y]
+            if c not in cache:
+                cache[c] = cuantiza(*c)
+            po[x, y] = cache[c]
     out.save(sys.argv[2])
 
 def base_color(P, c):

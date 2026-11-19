@@ -1,20 +1,22 @@
 //-------------------------------------------------------------------------------------------------
 // Renderizador HD de IMSAI8080 para MiSTer
 //
-// Saca 960x1080 a 60 Hz (1100x1091 en total) con un reloj de 72 MHz. El escalador de MiSTer lo
-// dobla en horizontal de forma exacta (relacion 16:9 -> 1920x1080), asi que cada punto es un
-// bloque de 2x1 pixeles de pantalla.
+// Saca 1920x1080 reales a 30 Hz (2200x1091 en total) con un reloj de 72 MHz: cada punto es un
+// pixel de una pantalla de 1080p. Son 30 cuadros por segundo porque 1920 puntos a 60 Hz pedirian
+// 144 MHz en el core y en la entrada del escalador; el escalador de MiSTer repite cada cuadro y la
+// salida HDMI sigue a 60 Hz (con vsync_adjust=0).
 //
-//   - Panel: imagen de 800x560 a 4 bits (rtl/init/panel_hd.hex), con la paleta y las reglas de
-//     panel.sv para LEDs (indice 3 -> rojo) e interruptores (barra gris donde el punto no es 0).
-//     Las zonas de LEDs e interruptores se buscan en tablas por columna y por fila del panel
-//     original (tools/genera_hd.py); la fila HD / 2 es la fila original.
-//   - Consola: 80x25 caracteres de 10x10 con las lineas dobladas (20 por fila), leyendo una copia
-//     de la RAM de video del terminal. Fuente Wang o VT220 (lineas 1-10 de la celda de 12).
+//   - Panel: imagen de 1600x560 a 4 bits, guardada como teselas de 8x8 (rtl/init/hd_map.hex y
+//     hd_tiles.hex), con la paleta y las reglas de panel.sv para LEDs (indice 3 -> rojo) e
+//     interruptores (barra gris donde el punto no es 0). Las zonas de LEDs e interruptores se
+//     buscan en tablas por columna y por fila del panel original (tools/genera_hd.py): la columna
+//     y la fila HD / 2.
+//   - Consola: 80x25 caracteres de 10x10 con cada punto a 2x2 (20 lineas por fila), leyendo una
+//     copia de la RAM de video del terminal. Fuente Wang o VT220 (lineas 1-10 de la celda de 12).
 //     La segunda copia de cada linea se puede oscurecer (lineas de barrido).
 //
-// Distribucion (puntos del core): margen X 80, panel 800x560 en Y 5, consola 800x500 en Y 575; con
-// 'swap' la consola va arriba (Y 5) y el panel abajo (Y 515).
+// Distribucion: margen X 160, panel 1600x560 en Y 5, consola 1600x500 en Y 575; con 'swap' la
+// consola va arriba (Y 5) y el panel abajo (Y 515).
 //
 // Las entradas que vienen del core (36 MHz) salen del mismo PLL que clk (72 MHz) y son sincronas.
 //
@@ -60,9 +62,9 @@ module hd_video
 	output reg         VBlank
 );
 
-	localparam [10:0] H_ACT = 11'd960, H_SS = 11'd1000, H_SE = 11'd1044, H_TOT = 11'd1100;
+	localparam [11:0] H_ACT = 12'd1920, H_SS = 12'd2008, H_SE = 12'd2052, H_TOT = 12'd2200;
 	localparam [10:0] V_ACT = 11'd1080, V_SS = 11'd1083, V_SE = 11'd1088, V_TOT = 11'd1091;
-	localparam [10:0] X0 = 11'd80;
+	localparam [11:0] X0 = 12'd160;
 
 	localparam [10:0] PANEL_H = 11'd560;
 	localparam [10:0] CONS_H  = 11'd500;
@@ -72,13 +74,16 @@ module hd_video
 
 //--- memorias ------------------------------------------------------------------------------------
 
-	reg [31:0] panel_rom[56000];
+	`include "rtl/init/hd_params.vh"
+	reg [12:0] map_rom[14000];          // 200x70 teselas
+	reg [31:0] tile_rom[HD_TILES * 8];  // 8 lineas de 8 puntos por tesela
 	reg [23:0] col_lut[800];
 	reg  [7:0] row_lut[280];
 	reg  [6:0] led_map[128];
 	reg  [9:0] font_rom[4096];
 	initial begin
-		$readmemh("rtl/init/panel_hd.hex", panel_rom);
+		$readmemh("rtl/init/hd_map.hex", map_rom);
+		$readmemh("rtl/init/hd_tiles.hex", tile_rom);
 		$readmemh("rtl/init/hd_col.hex", col_lut);
 		$readmemh("rtl/init/hd_row.hex", row_lut);
 		$readmemh("rtl/init/hd_led.hex", led_map);
@@ -91,10 +96,12 @@ module hd_video
 
 //--- etapa 0: contadores -------------------------------------------------------------------------
 
-	reg [10:0] hc = 11'd0, vc = 11'd0;
+	reg [11:0] hc = 12'd0;
+	reg [10:0] vc = 11'd0;
 	reg  [3:0] px = 4'd0;           // punto dentro del caracter
 	reg  [6:0] col = 7'd0;          // columna de la consola
-	reg [15:0] p_base = 16'd0;      // direccion de la linea del panel (100 palabras por linea)
+	reg        ph = 1'b0;           // mitad del punto de la consola (cada punto son 2 pixeles)
+	reg [13:0] p_base = 14'd0;      // direccion en el mapa de la fila de teselas (200 por fila)
 	reg  [9:0] p_line = 10'd0;      // linea del panel (0-559)
 	reg  [4:0] c_row = 5'd0;        // fila de la consola
 	reg  [4:0] c_cl = 5'd0;         // linea dentro de la fila (0-19)
@@ -102,18 +109,18 @@ module hd_video
 
 	always @(posedge clk) begin
 		if (hc == H_TOT - 1'd1) begin
-			hc <= 11'd0;
+			hc <= 12'd0;
 			if (vc == V_TOT - 1'd1) vc <= 11'd0;
 			else vc <= vc + 1'd1;
 
 			// valores de la linea siguiente (vc + 1)
 			if (vc + 1'd1 == PY0) begin
-				in_p <= 1'b1; p_line <= 10'd0; p_base <= 16'd0;
+				in_p <= 1'b1; p_line <= 10'd0; p_base <= 14'd0;
 			end
 			else if (in_p) begin
 				if (p_line == PANEL_H - 1'd1) in_p <= 1'b0;
 				p_line <= p_line + 1'd1;
-				p_base <= p_base + 16'd100;
+				if (p_line[2:0] == 3'd7) p_base <= p_base + 14'd200;
 			end
 
 			if (vc + 1'd1 == CY0) begin
@@ -133,16 +140,22 @@ module hd_video
 		if (hc == X0 - 1'd1) begin
 			px <= 4'd0;
 			col <= 7'd0;
+			ph <= 1'b0;
 		end
-		else if (px == 4'd9) begin
-			px <= 4'd0;
-			col <= col + 1'd1;
+		else begin
+			ph <= ~ph;
+			if (ph) begin
+				if (px == 4'd9) begin
+					px <= 4'd0;
+					col <= col + 1'd1;
+				end
+				else px <= px + 1'd1;
+			end
 		end
-		else px <= px + 1'd1;
 	end
 
-	wire       s0_inx = hc >= X0 && hc < X0 + 11'd800;
-	wire [9:0] s0_x = hc[9:0] - X0[9:0];
+	wire        s0_inx = hc >= X0 && hc < X0 + 12'd1600;
+	wire [10:0] s0_x = hc[10:0] - X0[10:0];
 	wire       s0_hb = hc >= H_ACT;
 	wire       s0_vb = vc >= V_ACT;
 	wire       s0_hs = hc >= H_SS && hc < H_SE;
@@ -153,7 +166,7 @@ module hd_video
 	reg [15:0] sw_l;
 	reg  [9:0] msw_l;
 	reg  [7:0] dl_l;
-	always @(posedge clk) if (hc == 11'd0 && vc == V_ACT) begin
+	always @(posedge clk) if (hc == 12'd0 && vc == V_ACT) begin
 		leds_l <= leds;
 		sw_l <= switches;
 		msw_l <= m_switches;
@@ -162,9 +175,10 @@ module hd_video
 
 //--- etapa 1: direcciones ------------------------------------------------------------------------
 
-	reg [15:0] s1_paddr;
-	reg  [9:0] s1_x;
+	reg [13:0] s1_maddr;
+	reg [10:0] s1_x;
 	reg  [8:0] s1_prow;
+	reg  [2:0] s1_pl;
 	reg [11:0] s1_vaddr;
 	reg  [3:0] s1_px;
 	reg  [6:0] s1_col;
@@ -174,9 +188,10 @@ module hd_video
 	reg  [3:0] s1_sync;             // {hs, vs, hb, vb}
 
 	always @(posedge clk) begin
-		s1_paddr <= p_base + s0_x[9:3];
+		s1_maddr <= p_base + s0_x[10:3];
 		s1_x     <= s0_x;
 		s1_prow  <= p_line[9:1];
+		s1_pl    <= p_line[2:0];
 		s1_vaddr <= {c_row, col};
 		s1_px    <= px;
 		s1_col   <= col;
@@ -190,18 +205,18 @@ module hd_video
 
 //--- etapa 2: lecturas ---------------------------------------------------------------------------
 
-	reg [31:0] s2_word;
+	reg [12:0] s2_tile;
 	reg [23:0] s2_colv;
 	reg  [7:0] s2_rowv;
 	reg  [8:0] s2_code;
 	always @(posedge clk) begin
-		s2_word <= panel_rom[s1_paddr];
-		s2_colv <= col_lut[s1_x];
+		s2_tile <= map_rom[s1_maddr];
+		s2_colv <= col_lut[s1_x[10:1]];
 		s2_rowv <= row_lut[s1_prow];
 		s2_code <= vram[s1_vaddr];
 	end
 
-	reg  [2:0] s2_sub;
+	reg  [2:0] s2_sub, s2_pl;
 	reg  [3:0] s2_px, s2_l;
 	reg  [6:0] s2_col;
 	reg  [4:0] s2_row;
@@ -209,6 +224,7 @@ module hd_video
 	reg  [3:0] s2_sync;
 	always @(posedge clk) begin
 		s2_sub  <= s1_x[2:0];
+		s2_pl   <= s1_pl;
 		s2_px   <= s1_px;
 		s2_l    <= s1_l;
 		s2_col  <= s1_col;
@@ -221,20 +237,19 @@ module hd_video
 
 //--- etapa 3 -------------------------------------------------------------------------------------
 
-	// Punto del panel (mismo empaquetado que pixel_values en panel.sv)
-	wire [3:0] s2_pix =
-		s2_sub == 3'd0 ? s2_word[7:4]   : s2_sub == 3'd1 ? s2_word[3:0]   :
-		s2_sub == 3'd2 ? s2_word[15:12] : s2_sub == 3'd3 ? s2_word[11:8]  :
-		s2_sub == 3'd4 ? s2_word[23:20] : s2_sub == 3'd5 ? s2_word[19:16] :
-		s2_sub == 3'd6 ? s2_word[31:28] : s2_word[27:24];
-
 	// Caracter de la consola (como char_codebase en terminal.sv)
 	wire        s2_gr = s2_code[6:0] >= 7'h5E && s2_code[6:0] <= 7'h7E;
 	wire  [6:0] s2_cb = (s2_code[8] && s2_gr) ? s2_code[6:0] :
 	                    (s2_code[6:0] < 7'h20 ? 7'd0 : s2_code[6:0] - 7'h20);
 	wire [10:0] s2_fa = {s2_cb, 3'b000} + {1'b0, s2_cb, 2'b00} + 11'd1 + s2_l;
 
-	reg  [3:0] s3_pix;
+	reg [31:0] s3_word;
+	reg  [2:0] s3_sub;
+	always @(posedge clk) begin
+		s3_word <= tile_rom[{s2_tile, s2_pl}];
+		s3_sub  <= s2_sub;
+	end
+
 	reg  [6:0] s3_mapa_addr, s3_mapb_addr;
 	reg        s3_ledav, s3_ledbv, s3_swv, s3_dv;
 	reg  [4:0] s3_swidx;
@@ -247,7 +262,6 @@ module hd_video
 	reg  [3:0] s3_sync;
 
 	always @(posedge clk) begin
-		s3_pix       <= s2_pix;
 		s3_mapa_addr <= {s2_rowv[6:5], s2_colv[22:18]};
 		s3_mapb_addr <= {s2_rowv[6:5], s2_colv[16:12]};
 		s3_ledav     <= s2_colv[23] & s2_rowv[7];
@@ -296,7 +310,7 @@ module hd_video
 		(s3_swrows[2] & s3_mp0) | (s3_swrows[1] & s3_mp1) | (s3_swrows[0] & ~s3_mp0 & ~s3_mp1));
 
 	always @(posedge clk) begin
-		s4_pix   <= s3_pix;
+		s4_pix   <= s3_word[{s3_sub, 2'b00} +: 4];   // el punto k, en los bits [4k+3:4k]
 		s4_ledav <= s3_ledav;
 		s4_ledbv <= s3_ledbv;
 		s4_dv    <= s3_dv;

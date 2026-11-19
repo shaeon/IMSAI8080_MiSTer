@@ -23,8 +23,8 @@
 // Video, dos modos (OSD "Video mode"):
 //   800x600  el de la Calypso: 800x600 (1024x625 en total, 35,2 kHz / 56,25 Hz), el panel arriba
 //            (280 lineas) y la consola abajo, o al reves con Ctrl+F2.
-//   HD 1080p rtl/hd_video.sv: 960x1080 a 60 Hz que el escalador dobla en horizontal; panel
-//            redibujado a doble resolucion vertical y consola con caracteres de 10x10 dobles.
+//   HD 1080p rtl/hd_video.sv: 1920x1080 reales a 30 Hz (el escalador repite cuadros); panel
+//            redibujado a 1600x560 y consola con caracteres de 10x10 a 2x2.
 // Fuente de la consola Wang (la original) o VT220 en los dos modos.
 //
 // This program is free software; you can redistribute it and/or modify it under the terms of the
@@ -562,8 +562,7 @@ module emu
 
 	// CLK_VIDEO es siempre clk_vid (72 MHz, el doble de clk_sys y del mismo PLL):
 	//  - 800x600: la salida de siempre (un punto por ciclo de 36 MHz), con CE_PIXEL a 36 MHz.
-	//  - HD 1080p: rtl/hd_video.sv, 960x1080 a 60 Hz, un punto por ciclo de 72 MHz. El escalador
-	//    lo dobla en horizontal (16:9).
+	//  - HD 1080p: rtl/hd_video.sv, 1920x1080 a 30 Hz, un pixel por ciclo de 72 MHz.
 	// No pasa por el scandoubler. Sin correccion de gamma (GAMMA=0): gamma_corr solo avanza en los
 	// flancos de subida de ce_pix, y en HD ce_pix esta siempre a 1 (con GAMMA=1 no salia video).
 	wire hd_mode = status[11];

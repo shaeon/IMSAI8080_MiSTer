@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # Genera los datos del renderizador HD (rtl/hd_video.sv):
 #
-#   rtl/init/panel_hd.hex   imagen del panel de 800x560 a 4 bits (paleta de panel.sv), 100 palabras
-#                           de 32 bits por linea, 8 puntos por palabra empaquetados como en la
-#                           Calypso (el byte n tiene los puntos 2n y 2n+1, el primero en el nibble
-#                           alto).
-#   rtl/init/hd_col.hex     por columna (0-799) a que LED(s) / interruptor / LED de disco pertenece:
+#   rtl/init/hd_map.hex     el panel HD es una imagen de 1600x560 a 4 bits (paleta de panel.sv)
+#   rtl/init/hd_tiles.hex   guardada como teselas de 8x8: un mapa de 200x70 con el numero de
+#   rtl/init/hd_params.vh   tesela y las teselas distintas (8 palabras de 32 bits cada una).
+#                           Entera serian 3,6 Mbit; asi, la mitad o menos (casi todo es negro).
+#   rtl/init/hd_col.hex     por columna del panel original (0-799, la del HD / 2) a que LED(s) / interruptor / LED de disco pertenece:
 #                           [23] [22:18] LED A, [17] [16:12] LED B, [11] [10:6] interruptor (0-15
 #                           normales, 16-20 momentaneos), [5] [4:3] LED de disco.
 #   (hd_row.hex: [7] [6:5] fila de LEDs, [4] [3] fila de LEDs de disco, [2] barra arriba,
@@ -17,8 +17,8 @@
 # comparaciones (col > c && col < c + ancho...), que el renderizador HD hace con la fila / 2.
 #
 # Uso:
-#   python3 tools/genera_hd.py --rom IMSAI8080.ROM        panel original con las lineas dobladas
-#   python3 tools/genera_hd.py --png panel_hd.png         imagen 800x560 en modo P (16 colores)
+#   python3 tools/genera_hd.py --rom IMSAI8080.ROM        panel original con cada punto 2x2
+#   python3 tools/genera_hd.py --png panel_hd.png         imagen 1600x560 en modo P (16 colores)
 import argparse, os, sys
 
 # --- constantes de rtl/imsai8080/panel/panel.sv -------------------------------------------------
@@ -46,6 +46,7 @@ PALETTE = [(0x0, 0x0, 0x0), (0x0, 0x0, 0x1), (0x1, 0x1, 0x0), (0x4, 0x0, 0x0), (
            (0xf, 0xf, 0xf)]
 
 W, H_SD, H_HD = 800, 280, 560
+WP = 1600                               # ancho del panel HD
 
 # En panel.sv la imagen sale 8 puntos a la derecha de 'col' (la palabra de 8 puntos se carga un
 # grupo antes), y todas las zonas estan en columnas de 'col'. El renderizador HD indexa las tablas
@@ -56,18 +57,15 @@ def dentro(v, ini, ancho):
     return v > ini and v < ini + ancho
 
 def centros_leds(panel):
-    """Centros de los 20 LEDs de la fila de abajo (indice 3) en la imagen, de izquierda a derecha."""
-    alto = len(panel) // 400
-    y = (LED_ROWS[2] + 8) * alto // H_SD
-    linea = [(panel[y * 400 + x // 2] >> 4) if x % 2 == 0 else panel[y * 400 + x // 2] & 15
-             for x in range(W)]
+    """Centros (en columnas de 800) de los 20 LEDs de la fila de abajo, de izquierda a derecha."""
+    linea = panel[(LED_ROWS[2] + 8) * 2]
     centros, ini = [], None
-    for x in range(W + 1):
-        es = x < W and linea[x] == 3
+    for x in range(WP + 1):
+        es = x < WP and linea[x] == 3
         if es and ini is None:
             ini = x
         if not es and ini is not None:
-            centros.append((ini + x - 1) / 2)
+            centros.append((ini + x - 1) / 4)
             ini = None
     if len(centros) != len(LED_COLS):
         sys.exit("se esperaban %d LEDs en la fila de abajo y hay %d" % (len(LED_COLS), len(centros)))
@@ -124,29 +122,43 @@ def tablas(panel):
     return col, fila, led
 
 def panel_desde_rom(path):
+    """Panel original con cada punto como 2x2 (matriz 560 x 1600 de indices de paleta)."""
     d = open(path, 'rb').read()
     if len(d) != W * H_SD // 2:
         sys.exit("%s: se esperaban %d bytes" % (path, W * H_SD // 2))
-    lineas = []
+    panel = []
     for y in range(H_SD):
-        l = d[y * 400:(y + 1) * 400]
-        lineas += [l, l]
-    return b''.join(lineas)
+        l = []
+        for x in range(W):
+            b = d[y * 400 + x // 2]
+            v = (b >> 4) if x % 2 == 0 else b & 15
+            l += [v, v]
+        panel += [l, list(l)]
+    return panel
 
 def panel_desde_png(path):
     from PIL import Image
     im = Image.open(path)
-    if im.size != (W, H_HD) or im.mode != 'P':
-        sys.exit("%s: hace falta una imagen 800x560 en modo P" % path)
+    if im.size != (WP, H_HD) or im.mode != 'P':
+        sys.exit("%s: hace falta una imagen 1600x560 en modo P" % path)
     px = im.load()
-    out = bytearray()
-    for y in range(H_HD):
-        for x in range(0, W, 2):
-            a, b = px[x, y], px[x + 1, y]
-            if a > 15 or b > 15:
-                sys.exit("%s: color de paleta > 15 en (%d,%d)" % (path, x, y))
-            out.append(a << 4 | b)
-    return bytes(out)
+    panel = [[px[x, y] for x in range(WP)] for y in range(H_HD)]
+    if max(max(l) for l in panel) > 15:
+        sys.exit("%s: hay colores de paleta > 15" % path)
+    return panel
+
+def teselas(panel):
+    """Trocea el panel en teselas de 8x8 sin repetir. Devuelve (mapa de 200x70, lista de teselas);
+    cada tesela son 8 palabras de 32 bits (una por linea), el punto k en los bits [4k+3:4k]."""
+    indice, lista, mapa = {}, [], []
+    for ty in range(H_HD // 8):
+        for tx in range(WP // 8):
+            t = tuple(sum(panel[ty * 8 + l][tx * 8 + k] << (4 * k) for k in range(8)) for l in range(8))
+            if t not in indice:
+                indice[t] = len(lista)
+                lista.append(t)
+            mapa.append(indice[t])
+    return mapa, lista
 
 def main():
     ap = argparse.ArgumentParser()
@@ -157,10 +169,16 @@ def main():
     panel = panel_desde_rom(a.rom) if a.rom else panel_desde_png(a.png)
 
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'rtl', 'init')
-    with open(os.path.join(out, 'panel_hd.hex'), 'w') as f:
-        for i in range(0, len(panel), 4):
-            b = panel[i:i + 4]
-            f.write('%08x\n' % (b[0] | b[1] << 8 | b[2] << 16 | b[3] << 24))
+    mapa, lista = teselas(panel)
+    if len(lista) > 8192:
+        sys.exit("demasiadas teselas distintas: %d" % len(lista))
+    with open(os.path.join(out, 'hd_map.hex'), 'w') as f:
+        f.write('\n'.join('%04x' % v for v in mapa) + '\n')
+    with open(os.path.join(out, 'hd_tiles.hex'), 'w') as f:
+        f.write('\n'.join('%08x' % w for t in lista for w in t) + '\n')
+    with open(os.path.join(out, 'hd_params.vh'), 'w') as f:
+        f.write("// Generado por tools/genera_hd.py\nlocalparam HD_TILES = %d;\n" % len(lista))
+    print("%d teselas distintas de %d" % (len(lista), len(mapa)))
     col, fila, led = tablas(panel)
     for nombre, datos, digitos in (('hd_col.hex', col, 6), ('hd_row.hex', fila, 2), ('hd_led.hex', led, 2)):
         with open(os.path.join(out, nombre), 'w') as f:
