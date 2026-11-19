@@ -16,7 +16,8 @@
 //     La segunda copia de cada linea se puede oscurecer (lineas de barrido).
 //
 // Distribucion: margen X 160, panel 1600x560 en Y 5, consola 1600x500 en Y 575; con 'swap' la
-// consola va arriba (Y 5) y el panel abajo (Y 515).
+// consola va arriba (Y 5) y el panel abajo (Y 515). Solo las 1600 columnas centrales son zona
+// visible (1600x1080, 40:27).
 //
 // Las entradas que vienen del core (36 MHz) salen del mismo PLL que clk (72 MHz) y son sincronas.
 //
@@ -156,7 +157,10 @@ module hd_video
 
 	wire        s0_inx = hc >= X0 && hc < X0 + 12'd1600;
 	wire [10:0] s0_x = hc[10:0] - X0[10:0];
-	wire       s0_hb = hc >= H_ACT;
+	// Zona visible: solo las 1600 columnas del panel y la consola (los margenes de 160 a cada lado
+	// van en el borrado). Asi el escalador ve una imagen de 1600x1080 (40:27): con "Original" sale
+	// a 1:1 con bandas negras a los lados y con "Full Screen" se estira a todo el ancho.
+	wire       s0_hb = hc < X0 || hc >= X0 + 12'd1600;
 	wire       s0_vb = vc >= V_ACT;
 	wire       s0_hs = hc >= H_SS && hc < H_SE;
 	wire       s0_vs = vc >= V_SS && vc < V_SE;

@@ -640,8 +640,8 @@ module emu
 		.VIDEO_ARX  (VIDEO_ARX  ),
 		.VIDEO_ARY  (VIDEO_ARY  ),
 		.VGA_DE_IN  (vga_de     ),
-		.ARX        ((!ar) ? (hd_mode ? 12'd16 : 12'd4) : (ar - 1'd1)),
-		.ARY        ((!ar) ? (hd_mode ? 12'd9 : 12'd3) : 12'd0),
+		.ARX        ((!ar) ? (hd_mode ? 12'd40 : 12'd4) : (ar - 1'd1)),   // HD: 1600x1080 a 1:1
+		.ARY        ((!ar) ? (hd_mode ? 12'd27 : 12'd3) : 12'd0),
 		.CROP_SIZE  (12'd0      ),
 		.CROP_OFF   (5'd0       ),
 		.SCALE      ({1'b0, status[10], 1'b0})
