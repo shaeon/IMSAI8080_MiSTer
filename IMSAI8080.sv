@@ -57,6 +57,12 @@ module emu
 	assign BUTTONS = 0;
 	assign LED_POWER = 0;
 
+	// Chameleon96: las dos PSRAM de la placa no se usan
+	assign {PSRAM_SCLK, PSRAM_SIO_OUT, PSRAM_SIO_OE}    = '0;
+	assign {PSRAM2_SCLK, PSRAM2_SIO_OUT, PSRAM2_SIO_OE} = '0;
+	assign PSRAM_CE_N  = 1'b1;
+	assign PSRAM2_CE_N = 1'b1;
+
 //--- config string -------------------------------------------------------------------------------
 //
 //  Los bits 0-6 son los mismos que en la Calypso.

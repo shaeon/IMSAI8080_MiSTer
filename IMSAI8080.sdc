@@ -1,10 +1,11 @@
 # Restricciones propias del core (las generales estan en sys/sys_top.sdc, que ya deriva los
 # relojes del PLL).
 
-# Salidas de rtl/pll.v. En get_clocks, con los corchetes escapados.
-set clk_sys {emu|pll|pll_inst|altera_pll_i|general\[0\].gpll~PLL_OUTPUT_COUNTER|divclk}
-set clk_2m5 {emu|pll|pll_inst|altera_pll_i|general\[1\].gpll~PLL_OUTPUT_COUNTER|divclk}
-set clk_vid {emu|pll|pll_inst|altera_pll_i|general\[2\].gpll~PLL_OUTPUT_COUNTER|divclk}
+# Salidas de rtl/pll.v. En get_clocks, con los corchetes escapados; el * delante vale para
+# MiSTer (emu|...) y para la Chameleon96 (sys_top|emu|...).
+set clk_sys {*emu|pll|pll_inst|altera_pll_i|general\[0\].gpll~PLL_OUTPUT_COUNTER|divclk}
+set clk_2m5 {*emu|pll|pll_inst|altera_pll_i|general\[1\].gpll~PLL_OUTPUT_COUNTER|divclk}
+set clk_vid {*emu|pll|pll_inst|altera_pll_i|general\[2\].gpll~PLL_OUTPUT_COUNTER|divclk}
 
 # ----------------------------------------------------------------------------
 # clk_sys (36 MHz) y clk_vid (72 MHz) <-> Votrax (2,5 MHz)
