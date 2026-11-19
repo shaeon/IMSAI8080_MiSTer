@@ -73,18 +73,20 @@ El ordenador arranca parado (WAIT) y el teclado está en el panel. Una sesión t
 ## Modo HD 1080p
 
 El modo de la Calypso (800×600) se ve escalado 1,8 veces en una pantalla de 1080 líneas, con líneas
-desiguales. El modo HD saca **960×1080 a 60 Hz** y el escalador de MiSTer lo dobla en horizontal de
-forma exacta, así que todo sale a escala entera:
+desiguales. El modo HD saca **1920×1080 reales**, un píxel del core por cada píxel de la pantalla:
 
-- **Panel** a 1600×560 en pantalla, **redibujado** con el doble de resolución vertical: LEDs,
-  palancas y LEDs de disco vueltos a dibujar con suavizado y todos los textos escritos de nuevo
-  (`tools/genera_panel_hd.py`, a partir de la imagen de la Calypso).
+- **Panel** de 1600×560, **redibujado** al doble de resolución en los dos ejes: LEDs, palancas y
+  LEDs de disco vueltos a dibujar con suavizado y todos los textos escritos de nuevo
+  (`tools/genera_panel_hd.py`, a partir de la imagen de la Calypso). Los LEDs y los interruptores
+  están en las mismas posiciones que en el original.
 - **Consola** de 80×25 a 1600×500, con caracteres de 10×10 en píxeles de 2×2. Con la fuente VT220 y
   `Scanlines` se parece mucho a un terminal de fósforo.
 - Ctrl+F2 sigue intercambiando panel y consola.
 
-Pensado para HDMI a 1080p (`video_mode=8` en `MiSTer.ini`). Por la salida analógica sale a 65 kHz,
-que muchos monitores no aceptan: para VGA, mejor el modo 800×600.
+El core genera este modo a **30 cuadros por segundo** (1920 puntos a 60 Hz pedirían un reloj de
+144 MHz); el escalador de MiSTer repite cada cuadro y la salida HDMI sigue a 60 Hz. Está pensado
+para HDMI a 1080p con `video_mode=8` y `vsync_adjust=0` en `MiSTer.ini`. Por la salida analógica
+no sirve (30 Hz): para VGA, el modo 800×600.
 
 ## Fuente VT220
 

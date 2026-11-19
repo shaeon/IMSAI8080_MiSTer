@@ -73,18 +73,20 @@ The computer starts stopped (WAIT) with the keyboard on the panel. A typical ses
 ## HD 1080p mode
 
 The Calypso mode (800×600) is scaled 1.8 times on a 1080-line screen, with uneven lines. The HD
-mode outputs **960×1080 at 60 Hz** and the MiSTer scaler doubles it horizontally in an exact way, so
-everything is shown at an integer scale:
+mode outputs a real **1920×1080**, one core pixel per screen pixel:
 
-- **Panel** at 1600×560 on screen, **redrawn** with twice the vertical resolution: LEDs, switch
-  paddles and disk LEDs redrawn with antialiasing and every label typeset again
-  (`tools/genera_panel_hd.py`, from the Calypso image).
+- **Panel** of 1600×560, **redrawn** at twice the resolution on both axes: LEDs, switch paddles
+  and disk LEDs redrawn with antialiasing and every label typeset again
+  (`tools/genera_panel_hd.py`, from the Calypso image). LEDs and switches are in the same
+  positions as in the original.
 - **Console** 80×25 at 1600×500, with 10×10 characters in 2×2 pixels. With the VT220 font and
   `Scanlines` it looks very much like a phosphor terminal.
 - Ctrl+F2 still swaps panel and console.
 
-Meant for HDMI at 1080p (`video_mode=8` in `MiSTer.ini`). On the analog output it runs at 65 kHz,
-which many monitors do not accept: for VGA, use the 800×600 mode.
+The core generates this mode at **30 frames per second** (1920 pixels at 60 Hz would need a
+144 MHz clock); the MiSTer scaler repeats each frame and the HDMI output stays at 60 Hz. It is
+meant for HDMI at 1080p with `video_mode=8` and `vsync_adjust=0` in `MiSTer.ini`. It is not usable
+on the analog output (30 Hz): for VGA, use the 800×600 mode.
 
 ## VT220 font
 
